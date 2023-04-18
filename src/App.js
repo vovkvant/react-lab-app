@@ -1,28 +1,42 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 import React, { useState, useEffect, useRef } from 'react';
+import DataSource from "./DataSource";
 
 function App() {
+  const dataSource = new DataSource();
+
   const [todoItems, setTodoItems] = useState([]);
   const [count, setCount] = useState(0);
+  const [editIndex, setEditIndex] = useState(-1);
 
   const inputTodo = useRef(null);
 
   useEffect(() => {
-    const jsonData = localStorage.getItem('todoItems')
+    console.log("useEffect " + editIndex)
+    const jsonData = dataSource.getData()
     if (jsonData != null) {
       const items = JSON.parse(jsonData)
       setCount(items.length)
       setTodoItems(items)
     }
-  }, []);
-
-  const addTodo = () => {
-    const todoToAdd = inputTodo.current.value.trim()
-    if (todoToAdd.length > 0) {
-      const listCopy = [...todoItems, {todoText: todoToAdd, todoTime: new Date().toLocaleString()}];
-      inputTodo.current.value = ""
-      updateList(listCopy)
+    if(editIndex !== -1) {
+      inputTodo.current.value = todoItems[editIndex].todoText
     }
+  }, [editIndex]);
+
+  const saveTodo = () => {
+    const todoToAdd = inputTodo.current.value.trim()
+    const listCopy = [...todoItems];
+    if (todoToAdd.length > 0) {
+      if (editIndex === -1) {
+        listCopy.push({ todoText: todoToAdd, todoTime: new Date().toLocaleString() }) 
+      } else {
+        listCopy[editIndex] = { todoText: todoToAdd, todoTime: new Date().toLocaleString() };
+      }
+    }
+    setEditIndex(-1)
+    updateList(listCopy)
+    inputTodo.current.value = ""
   };
 
   const removeTodo = (index) => {
@@ -31,11 +45,11 @@ function App() {
       listCopy.splice(index, 1);
       updateList(listCopy)
     }
-  };
+  }
 
   const updateList = (editedList) => {
     setTodoItems(editedList);
-    localStorage.setItem('todoItems', JSON.stringify(editedList));
+    dataSource.putData(editedList)
     setCount(editedList.length)
   }
 
@@ -44,12 +58,14 @@ function App() {
       <div className="row">
         <div className="col-6">
           <h2>TODO list application</h2>
-          <form className="row g-3" onSubmit={addTodo}>
+          <form className="row g-3" onSubmit={saveTodo}>
             <div className="col-auto">
               <input ref={inputTodo} type="text" className="form-control" placeholder="input todo" />
             </div>
             <div className="col-auto">
-              <button onClick={addTodo} className="btn btn-primary mb-3" type="button">Add</button>
+              <button onClick={saveTodo} className="btn btn-primary mb-3" type="button">
+                { editIndex === -1 ? "Add" : "Save" }
+              </button>
             </div>
           </form>
         </div>
@@ -60,18 +76,21 @@ function App() {
           <table className="table table-sm">
             <thead>
               <tr>
-                <th scope="col" style={{width:"40px"}}>#</th>
+                <th scope="col" style={{ width: "40px" }}>#</th>
                 <th scope="col">TODO</th>
-                <th scope="col" style={{width:"90px"}}>Action</th>
+                <th scope="col" style={{ width: "130px" }}>Action</th>
               </tr>
             </thead>
             <tbody>
-              {todoItems.map((item, index) => (
+              {todoItems.map((item, index) => ( 
                 <tr key={index}>
-                  <th scope="row" >{index+1}</th>
-                  <td>{item.todoText}&nbsp;<span style={{"font-size":"8px"}} >{item.todoTime}</span>
+                  <th scope="row" >{index + 1}</th>
+                  <td>{item.todoText}&nbsp;<span style={{ "fontSize": "8px" }} >{item.todoTime}</span>
                   </td>
-                  <td><button type="button" className="btn btn-outline-danger btn-sm" onClick={() => removeTodo(index)}>Remove</button></td>
+                  <td>
+                    <button type="button" className="btn btn-outline-danger btn-sm" onClick={() => setEditIndex(index)}>Edit</button>&nbsp;
+                    <button type="button" className="btn btn-outline-danger btn-sm" onClick={() => removeTodo(index)}>Remove</button>
+                  </td>
                 </tr>
               ))}
             </tbody>
